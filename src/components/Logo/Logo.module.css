@@ -1,0 +1,19 @@
+.Logo {
+    background-color: rgb(245, 216, 192);
+    padding: 8px;
+    height: 100%;
+    box-sizing: border-box;
+    border-radius: 5px;
+    display: flex;
+    justify-content: center;
+}
+
+.Logo img {
+    height: 100%;
+}
+
+@media (max-width: 499px) {
+    .Logo {
+        width: 72px;
+    }
+}
