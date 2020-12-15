@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import React, { useEffect, useState } from "react";
 
 import Auxiliary from "../../hoc/Auxiliary/Auxiliary";
 import Burguer from "../../components/Burger/Burguer";
@@ -11,95 +11,100 @@ import withErrorHandler from "../../hoc/withErrorHandler/withErrorHandler";
 import { connect } from "react-redux";
 import * as actions from "../../store/actions/index";
 
-class BurguerBuilder extends Component {
-    state = {
-        purchasing: false,
-    };
+const BurguerBuilder = (props) => {
+    // state = {
+    //     purchasing: false,
+    // };
 
-    componentDidMount() {
-        this.props.fetchIngredients();
+    const [purchasing, setPurchasing] = useState(false);
+    const { fetchIngredients, onAutoLog } = props;
+
+    useEffect(() => {
+        fetchIngredients();
         const tokenInStorage = localStorage.getItem("token");
         const userId = localStorage.getItem("userId");
         const expireDate = localStorage.getItem("expireDate");
 
         if (tokenInStorage) {
-            this.props.onAutoLog(tokenInStorage, userId, expireDate);
+            onAutoLog(tokenInStorage, userId, expireDate);
         }
-    }
+    }, [fetchIngredients, onAutoLog]);
 
-    updatePurchaseState() {
-        const sum = Object.keys(this.props.ings)
+    const updatePurchaseState = () => {
+        const sum = Object.keys(props.ings)
             .map((igKey) => {
-                return this.props.ings[igKey];
+                return props.ings[igKey];
             })
             .reduce((sum, el) => {
                 return sum + el;
             }, 0);
         return sum > 0;
-    }
+    };
 
-    purchaseHandler = () => {
-        if (this.props.isAuth) {
-            this.setState({ purchasing: true });
+    const purchaseHandler = () => {
+        if (props.isAuth) {
+            setPurchasing(true);
         } else {
-            this.props.history.push("/authorization");
+            props.history.push("/authorization");
         }
     };
 
-    purchaseCancelHandler = () => {
-        this.setState({ purchasing: false });
+    const purchaseCancelHandler = () => {
+        setPurchasing(false);
     };
 
-    purchaseContinueHandler = () => {
-        this.props.onPurchaseInit();
-        this.props.history.push("/checkout");
+    const purchaseContinueHandler = () => {
+        props.onPurchaseInit();
+        props.history.push("/checkout");
     };
 
-    render() {
-        const disabledInfo = {
-            ...this.props.ings,
-        };
-        for (let key in disabledInfo) {
-            disabledInfo[key] = disabledInfo[key] <= 0;
-        }
-        let orderSummary = null;
+    const disabledInfo = {
+        ...props.ings,
+    };
+    for (let key in disabledInfo) {
+        disabledInfo[key] = disabledInfo[key] <= 0;
+    }
+    let orderSummary = null;
 
-        let burger = this.props.error ? <p>the Ingredients can't be loaded!</p> : <Spinner />;
+    let burger = props.error ? (
+        <p>the Ingredients can't be loaded!</p>
+    ) : (
+        <Spinner />
+    );
 
-        if (this.props.ings) {
-            burger = (
-                <Auxiliary>
-                    <Burguer ingredients={this.props.ings} />
-                    <BuildControls
-                        ingredientAdded={this.props.addedItemHandler}
-                        ingredientRemoved={this.props.removedItemHandler}
-                        disabled={disabledInfo}
-                        purchasable={this.updatePurchaseState()}
-                        ordered={this.purchaseHandler}
-                        price={this.props.price}
-                        isAuth={this.props.isAuth}
-                    />
-                </Auxiliary>
-            );
-            orderSummary = (
-                <OrderSummary
-                    ingredients={this.props.ings}
-                    price={this.props.price}
-                    purchaseCancelled={this.purchaseCancelHandler}
-                    purchaseContinued={this.purchaseContinueHandler}
-                ></OrderSummary>
-            );
-        }
-        return (
+    if (props.ings) {
+        burger = (
             <Auxiliary>
-                <Modal show={this.state.purchasing} modalClosed={this.purchaseCancelHandler}>
-                    {orderSummary}
-                </Modal>
-                {burger}
+                <Burguer ingredients={props.ings} />
+                <BuildControls
+                    ingredientAdded={props.addedItemHandler}
+                    ingredientRemoved={props.removedItemHandler}
+                    disabled={disabledInfo}
+                    purchasable={updatePurchaseState()}
+                    ordered={purchaseHandler}
+                    price={props.price}
+                    isAuth={props.isAuth}
+                />
             </Auxiliary>
         );
+        orderSummary = (
+            <OrderSummary
+                ingredients={props.ings}
+                price={props.price}
+                purchaseCancelled={purchaseCancelHandler}
+                purchaseContinued={purchaseContinueHandler}
+            ></OrderSummary>
+        );
     }
-}
+    return (
+        <Auxiliary>
+            <Modal show={purchasing} modalClosed={purchaseCancelHandler}>
+                {orderSummary}
+            </Modal>
+            {burger}
+        </Auxiliary>
+    );
+};
 
 const mapStateToProps = (state) => {
     return {
@@ -113,12 +118,17 @@ const mapStateToProps = (state) => {
 const mapDispatchToProps = (dispatch) => {
     return {
         addedItemHandler: (ingName) => dispatch(actions.addIngredient(ingName)),
-        removedItemHandler: (ingName) => dispatch(actions.removeIngredient(ingName)),
+        removedItemHandler: (ingName) =>
+            dispatch(actions.removeIngredient(ingName)),
         fetchIngredients: () => dispatch(actions.fetchIngredients()),
         onPurchaseInit: () => dispatch(actions.purchaseBurgerInit()),
-        onAutoLog: (token, userId, expireDate) => dispatch(actions.autoLog(token, userId, expireDate)),
+        onAutoLog: (token, userId, expireDate) =>
+            dispatch(actions.autoLog(token, userId, expireDate)),
         onLogout: () => dispatch(actions.authLogout()),
     };
 };
 
-export default connect(mapStateToProps, mapDispatchToProps)(withErrorHandler(BurguerBuilder, axios));
+export default connect(
+    mapStateToProps,
+    mapDispatchToProps
+)(withErrorHandler(BurguerBuilder, axios));
